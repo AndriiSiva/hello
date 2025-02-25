@@ -1,0 +1,65 @@
+name: Java CI/CD
+
+# Триггеры: запуск workflow при push или pull request в ветку main
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+# Jobs
+jobs:
+  build:
+    runs-on: ubuntu-latest # Используем runner на базе Ubuntu
+
+    steps:
+      # Шаг 1: Клонируем репозиторий
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Шаг 2: Устанавливаем JDK 17
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      # Шаг 3: Собираем проект с помощью Maven
+      - name: Build with Maven
+        run: mvn -B package --file pom.xml
+
+      # Шаг 4: Запускаем тесты
+      - name: Run tests
+        run: mvn test
+
+      # Шаг 5: Загружаем артефакт (JAR-файл)
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: demo-app
+          path: target/demo-1.0.0.jar
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build # Зависит от job "build"
+    steps:
+      # Шаг 1: Скачиваем артефакт
+      - name: Download artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: demo-app
+          path: target
+
+     # Шаг 2: Устанавливаем Render CLI
+     - name: Install Render CLI
+     run: |
+       curl -s https://cli.render.com/install.sh | bash
+
+   # Шаг 3: Развертываем приложение на Render
+   - name: Deploy to Render
+     env:
+       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }} # API-ключ Render
+       RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }} # ID сервиса на Render
+     run: |
+       render services deploy $RENDER_SERVICE_ID --wait
+          
