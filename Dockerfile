@@ -1,11 +1,13 @@
-# Используем официальный образ OpenJDK как базовый
-FROM openjdk:17-jdk-slim
-
-# Устанавливаем рабочую директорию внутри контейнера
+# Используем образ Maven для сборки
+FROM maven:3.8.6-openjdk-17 AS builder
 WORKDIR /app
+COPY . .
+RUN mvn clean package -DskipTests
 
-# Копируем файл JAR в контейнер
-COPY target/demo-1.0.0.jar app.jar
+# Используем легковесный JDK-образ для запуска
+FROM openjdk:17-jdk-slim
+WORKDIR /app
+COPY --from=builder /app/target/*.jar app.jar
 
-# Указываем команду для запуска приложения
+# Запускаем приложение
 ENTRYPOINT ["java", "-jar", "app.jar"]
